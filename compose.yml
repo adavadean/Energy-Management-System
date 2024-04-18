@@ -1,0 +1,118 @@
+services:
+  client_app:
+    build: "./client_app"
+    ports:
+      - 3000:3000
+    networks:
+      spring-network:
+        ipv4_address: 172.16.200.6
+  deviceservice:
+    build: "./deviceservice"
+    depends_on:
+      - device_db
+    ports:
+      - 8081:8081
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://device_db:3306/device_db
+    networks:
+      spring-network:
+        ipv4_address: 172.16.200.20
+
+  userservice:
+    build: "./userservice"
+    depends_on:
+      - user_db
+    ports:
+      - 8080:8080
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://user_db:3306/user_db
+    networks:
+      spring-network:
+        ipv4_address: 172.16.200.9
+
+  monitoringservice:
+    build: "./monitoringservice"
+    depends_on:
+      - monitor_db
+      - rabbitmq
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://monitor_db:3306/monitor_db
+    ports:
+      - 8083:8082
+    networks:
+      spring-network:
+        ipv4_address: 172.16.200.16
+
+  chat:
+    build: "./chat"
+    depends_on:
+      - userservice
+      - deviceservice
+    ports:
+      - 8085:8085
+    networks:
+      spring-network:
+        ipv4_address: 172.16.200.18
+
+  user_db:
+    image: 'mysql:latest'
+    container_name: 'user_db'
+    volumes:
+      - ./userservice/mysql:/var/lib/mysql
+    environment:
+      - 'MYSQL_DATABASE=user_db'
+      - 'MYSQL_PASSWORD=user'
+      - 'MYSQL_ROOT_PASSWORD=root'
+      - 'MYSQL_USER=user'
+      - 'MYSQL_TCP_PORT=3306'
+    ports:
+      - '3309:3306'
+    networks:
+      spring-network:
+
+  device_db:
+    image: 'mysql:latest'
+    container_name: 'device_db'
+    volumes:
+      - ./deviceservice/mysql:/var/lib/mysql
+    environment:
+      - 'MYSQL_DATABASE=device_db'
+      - 'MYSQL_PASSWORD=user'
+      - 'MYSQL_ROOT_PASSWORD=root'
+      - 'MYSQL_USER=user'
+      - 'MYSQL_TCP_PORT=3306'
+    ports:
+      - '3307:3306'
+    networks:
+      spring-network:
+
+  monitor_db:
+    image: 'mysql:latest'
+    container_name: 'monitor_db'
+    volumes:
+      - ./monitoringservice/mysql:/var/lib/mysql
+    environment:
+      - 'MYSQL_DATABASE=monitor_db'
+      - 'MYSQL_PASSWORD=user'
+      - 'MYSQL_ROOT_PASSWORD=root'
+      - 'MYSQL_USER=user'
+      - 'MYSQL_TCP_PORT=3306'
+    ports:
+      - '3308:3306'
+    networks:
+      spring-network:
+
+  rabbitmq:
+    image: rabbitmq:management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      spring-network:
+
+networks:
+  spring-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.16.200.0/24"
